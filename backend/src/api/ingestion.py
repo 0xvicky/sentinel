@@ -1,8 +1,11 @@
 from fastapi import APIRouter, UploadFile, File
 from src.services.store_docs import store
+from src.worker import process_worker
 from typing import List
 import uuid
+from celery.utils.log import get_task_logger
 
+logger = get_task_logger(__name__)
 router = APIRouter()
 
 
@@ -14,7 +17,9 @@ async def ingest(files: List[UploadFile] = File(...)):
     doc_ids = await store(files, session_id=session_id)
 
     for id in doc_ids:
-        print(id)
-    # enqueue the metadata to the queue
+        # enqueue the metadata to the queue
+        task = process_worker.delay(doc_id=id)
+        print("here in enqueue")
+        print(task)
 
     return {"session": session_id, "docs": doc_ids}

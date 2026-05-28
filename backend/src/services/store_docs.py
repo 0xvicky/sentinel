@@ -2,11 +2,8 @@ from fastapi import UploadFile
 from typing import List
 from pathlib import Path
 from src.schema.schema import FileModel
-from src.enums.enums import SessionStatus
 from src.db.db import get_db_conn
 import uuid
-
-import os
 
 # put the session to doc mapping in redis
 
