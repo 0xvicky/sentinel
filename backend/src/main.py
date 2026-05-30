@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from src.db.db import db_init
-from src.api import health, ingestion
+from src.api import health, ingestion, query
 from contextlib import contextmanager
 
 app = FastAPI()
@@ -10,3 +10,4 @@ db_init()
 
 app.include_router(health.router)
 app.include_router(ingestion.router)
+app.include_router(query.router)
