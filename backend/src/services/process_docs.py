@@ -3,6 +3,7 @@ from celery.utils.log import get_task_logger
 import fitz
 import pymupdf
 from src.schema.schema import ChunkModel, FileModel
+from src.services.vec_db import vector_store
 from typing import List
 
 logger = get_task_logger(__name__)
@@ -11,6 +12,9 @@ logger = get_task_logger(__name__)
 
 
 def chunker(cln_txt: str, doc_metadata: FileModel):
+    # eg : This is the best day of my life.=>["This", "is","the","best","day","of", "my","life","."]
+    # convert the txt into array, of strings
+    txt_arr = cln_txt.split()
     CHUNK_SIZE = 500
     OVERLAP = 50
     STRIDE = CHUNK_SIZE - OVERLAP
@@ -18,11 +22,11 @@ def chunker(cln_txt: str, doc_metadata: FileModel):
     chunks: List[ChunkModel] = []
     idx = 0
 
-    while i < len(cln_txt):
+    while i < len(txt_arr):
         chunk_content = (
-            cln_txt[i:]
-            if len(cln_txt) - i < CHUNK_SIZE
-            else cln_txt[i : i + CHUNK_SIZE]
+            " ".join(txt_arr[i:])
+            if len(txt_arr) - i < CHUNK_SIZE
+            else " ".join(txt_arr[i : i + CHUNK_SIZE])
         )
         chunk = ChunkModel(
             chunk_id=idx,
@@ -46,10 +50,12 @@ def extract(doc_path: str):
             # load_page
             page = doc.load_page(page_num)
             # clean the text
-            blocks = page.get_text("blocks")
-            for block in blocks:
-                text = block[4]
-                cleaned_data += text
+            # blocks = page.get_text("blocks")
+            # for block in blocks:
+            #     text = block[4]
+            #     cleaned_data += text
+            txt = page.get_text()
+            cleaned_data += txt
             # chunk the text based on certain strategy
 
     return cleaned_data
@@ -71,12 +77,13 @@ def parse_doc(doc_metadata: FileModel):
 def process(doc_id: str):
     """Process each doc for vectorDB ingestion."""
     doc_metadata = get_doc(doc_id)
+    session_id = doc_metadata.session_id
     # access that file first
     # logger.info(f"Here in process service:{doc_path}")
     # parse the document using pymupdf
     chunks = parse_doc(doc_metadata)
     # log to see what you're getting
-    logger.info(chunks)
+    # logger.info(chunks)
     # ingest it to vector db && bm25 indexing in postgres
-
+    res = vector_store(chunks,session_id)
     # if success, update the status to ready for query
